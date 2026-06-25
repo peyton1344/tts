@@ -1,0 +1,673 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Novel Reader TTS</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      font-family: Arial, sans-serif;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: linear-gradient(135deg, #151523, #35245c);
+      color: white;
+      padding: 16px;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 980px;
+      margin: auto;
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(14px);
+      border-radius: 22px;
+      padding: 22px;
+      box-shadow: 0 12px 35px rgba(0, 0, 0, 0.35);
+    }
+
+    h1 {
+      text-align: center;
+      margin: 0 0 16px;
+      font-size: 30px;
+    }
+
+    input, select, textarea {
+      width: 100%;
+      border: none;
+      outline: none;
+      border-radius: 14px;
+      padding: 14px;
+      font-size: 16px;
+    }
+
+    input, select {
+      background: rgba(255, 255, 255, 0.94);
+      color: #111;
+    }
+
+    textarea {
+      min-height: 430px;
+      resize: vertical;
+      line-height: 1.75;
+      background: rgba(255, 255, 255, 0.97);
+      color: #111;
+      margin-top: 12px;
+    }
+
+    .top {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .settings {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+      margin-top: 12px;
+    }
+
+    .box {
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 12px;
+    }
+
+    .box label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 14px;
+    }
+
+    input[type="range"] {
+      padding: 0;
+    }
+
+    .progress {
+      margin-top: 12px;
+      background: rgba(255, 255, 255, 0.12);
+      border-radius: 14px;
+      padding: 12px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      margin-top: 14px;
+    }
+
+    button {
+      border: none;
+      padding: 14px;
+      border-radius: 14px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+      color: white;
+    }
+
+    .save {
+      background: #5865f2;
+    }
+
+    .savepos {
+      background: #0ea5e9;
+    }
+
+    .read {
+      background: #22c55e;
+    }
+
+    .continue {
+      background: #14b8a6;
+    }
+
+    .start {
+      background: #8b5cf6;
+    }
+
+    .pause {
+      background: #f59e0b;
+    }
+
+    .stop {
+      background: #ef4444;
+    }
+
+    .clear {
+      background: #64748b;
+    }
+
+    .status {
+      text-align: center;
+      margin-top: 12px;
+      min-height: 24px;
+      font-weight: bold;
+      color: #86efac;
+    }
+
+    .small {
+      text-align: center;
+      font-size: 13px;
+      opacity: 0.85;
+      margin-top: 8px;
+    }
+
+    @media (max-width: 760px) {
+      body {
+        padding: 10px;
+      }
+
+      .app {
+        padding: 16px;
+        border-radius: 18px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      textarea {
+        min-height: 58vh;
+        font-size: 15px;
+      }
+
+      .settings {
+        grid-template-columns: 1fr;
+      }
+
+      .buttons {
+        grid-template-columns: 1fr 1fr;
+      }
+
+      button {
+        font-size: 14px;
+        padding: 13px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <h1>เว็บอ่านนิยาย TTS</h1>
+
+    <div class="top">
+      <input id="novelTitle" type="text" placeholder="ชื่อนิยาย / ชื่อตอน">
+      <select id="voiceSelect">
+        <option value="">กำลังโหลดเสียง...</option>
+      </select>
+    </div>
+
+    <textarea id="novelText" placeholder="วางหรือพิมพ์นิยายตรงนี้ แล้วกดอ่านได้เลย..."></textarea>
+
+    <div class="settings">
+      <div class="box">
+        <label>ความเร็วเสียง: <span id="rateValue">1.0</span></label>
+        <input id="rate" type="range" min="0.5" max="2" step="0.1" value="1">
+      </div>
+
+      <div class="box">
+        <label>โทนเสียง: <span id="pitchValue">1.0</span></label>
+        <input id="pitch" type="range" min="0.5" max="2" step="0.1" value="1">
+      </div>
+
+      <div class="box">
+        <label>เริ่มอ่านจากตอนย่อยที่</label>
+        <input id="startPart" type="number" min="1" value="1">
+      </div>
+    </div>
+
+    <div class="progress" id="progressBox">
+      จุดอ่านต่อ: ยังไม่มีข้อมูล<br>
+      จำนวนตอนย่อยทั้งหมด: 0
+    </div>
+
+    <div class="buttons">
+      <button class="save" onclick="saveNovel()">Save ข้อความ</button>
+      <button class="savepos" onclick="saveCurrentPosition()">Save จุดอ่านต่อ</button>
+      <button class="continue" onclick="continueReading()">อ่านต่อจากที่ค้าง</button>
+      <button class="start" onclick="readFromSelectedPart()">อ่านจากช่องนี้</button>
+      <button class="read" onclick="readFromBeginning()">อ่านใหม่ตั้งแต่ต้น</button>
+      <button class="pause" onclick="pauseOrResume()">พัก/อ่านต่อ</button>
+      <button class="stop" onclick="stopReading()">หยุด</button>
+      <button class="clear" onclick="clearNovel()">Clear</button>
+    </div>
+
+    <div class="status" id="status"></div>
+    <div class="small">ข้อมูลจะบันทึกแยกตามเครื่อง ไม่ซิงค์ระหว่างโทรศัพท์กับคอม</div>
+  </div>
+
+  <script>
+    const novelTitle = document.getElementById("novelTitle");
+    const novelText = document.getElementById("novelText");
+    const voiceSelect = document.getElementById("voiceSelect");
+    const rate = document.getElementById("rate");
+    const pitch = document.getElementById("pitch");
+    const rateValue = document.getElementById("rateValue");
+    const pitchValue = document.getElementById("pitchValue");
+    const startPart = document.getElementById("startPart");
+    const progressBox = document.getElementById("progressBox");
+    const statusText = document.getElementById("status");
+
+    let voices = [];
+    let chunks = [];
+    let chunkIndex = 0;
+    let isReading = false;
+
+    window.onload = function () {
+      novelTitle.value = localStorage.getItem("novelTitle") || "";
+      novelText.value = localStorage.getItem("novelText") || "";
+      rate.value = localStorage.getItem("novelRate") || "1";
+      pitch.value = localStorage.getItem("novelPitch") || "1";
+      rateValue.textContent = Number(rate.value).toFixed(1);
+      pitchValue.textContent = Number(pitch.value).toFixed(1);
+      refreshChunks();
+      loadVoices();
+      updateProgressBox();
+    };
+
+    function loadVoices() {
+      voices = speechSynthesis.getVoices();
+      voiceSelect.innerHTML = "";
+
+      const thaiVoices = voices.filter(v => v.lang.toLowerCase().includes("th"));
+      const otherVoices = voices.filter(v => !v.lang.toLowerCase().includes("th"));
+      const sortedVoices = [...thaiVoices, ...otherVoices];
+
+      if (sortedVoices.length === 0) {
+        const option = document.createElement("option");
+        option.value = "";
+        option.textContent = "ยังไม่พบเสียงในเครื่อง";
+        voiceSelect.appendChild(option);
+        return;
+      }
+
+      sortedVoices.forEach(voice => {
+        const realIndex = voices.indexOf(voice);
+        const option = document.createElement("option");
+        option.value = realIndex;
+        option.textContent = `${voice.name} (${voice.lang})`;
+        voiceSelect.appendChild(option);
+      });
+
+      const savedVoice = localStorage.getItem("novelVoice");
+      const firstThai = voices.findIndex(v => v.lang.toLowerCase().includes("th"));
+
+      if (savedVoice !== null && voices[savedVoice]) {
+        voiceSelect.value = savedVoice;
+      } else if (firstThai !== -1) {
+        voiceSelect.value = firstThai;
+      }
+    }
+
+    speechSynthesis.onvoiceschanged = loadVoices;
+
+    function saveNovel() {
+      localStorage.setItem("novelTitle", novelTitle.value);
+      localStorage.setItem("novelText", novelText.value);
+      localStorage.setItem("novelRate", rate.value);
+      localStorage.setItem("novelPitch", pitch.value);
+      localStorage.setItem("novelVoice", voiceSelect.value);
+      localStorage.setItem("novelHash", getTextHash());
+      showStatus("บันทึกข้อความแล้ว");
+      refreshChunks();
+      updateProgressBox();
+    }
+
+    function autoSaveNovel() {
+      localStorage.setItem("novelTitle", novelTitle.value);
+      localStorage.setItem("novelText", novelText.value);
+      localStorage.setItem("novelRate", rate.value);
+      localStorage.setItem("novelPitch", pitch.value);
+      localStorage.setItem("novelVoice", voiceSelect.value);
+      localStorage.setItem("novelHash", getTextHash());
+    }
+
+    function clearNovel() {
+      stopReading(false);
+      novelTitle.value = "";
+      novelText.value = "";
+      startPart.value = 1;
+      localStorage.removeItem("novelTitle");
+      localStorage.removeItem("novelText");
+      localStorage.removeItem("novelRate");
+      localStorage.removeItem("novelPitch");
+      localStorage.removeItem("novelVoice");
+      localStorage.removeItem("novelHash");
+      localStorage.removeItem("novelProgressIndex");
+      localStorage.removeItem("novelProgressHash");
+      localStorage.removeItem("novelProgressTime");
+      refreshChunks();
+      updateProgressBox();
+      showStatus("ลบข้อมูลแล้ว");
+    }
+
+    function getTextHash() {
+      const text = novelText.value;
+      let hash = 0;
+
+      for (let i = 0; i < text.length; i++) {
+        hash = ((hash << 5) - hash) + text.charCodeAt(i);
+        hash |= 0;
+      }
+
+      return String(hash);
+    }
+
+    function findCut(text, max) {
+      const marks = [" ", "\n", "，", ",", "、", "；", ";", ":", "："];
+      let best = -1;
+
+      for (const mark of marks) {
+        const index = text.lastIndexOf(mark, max);
+        if (index > best) best = index;
+      }
+
+      if (best > 80) return best + 1;
+      return max;
+    }
+
+    function splitText(text) {
+      const cleanText = text.replace(/\r/g, "").trim();
+      if (!cleanText) return [];
+
+      const maxLen = 220;
+      const rawParts = cleanText.match(/[^.!?。！？\n]+[.!?。！？\n]*/g) || [cleanText];
+      const result = [];
+      let current = "";
+
+      for (let part of rawParts) {
+        part = part.trim();
+        if (!part) continue;
+
+        while (part.length > maxLen) {
+          const cut = findCut(part, maxLen);
+          const piece = part.slice(0, cut).trim();
+
+          if (current.trim()) {
+            result.push(current.trim());
+            current = "";
+          }
+
+          result.push(piece);
+          part = part.slice(cut).trim();
+        }
+
+        const next = current ? current + " " + part : part;
+
+        if (next.length > maxLen) {
+          if (current.trim()) result.push(current.trim());
+          current = part;
+        } else {
+          current = next;
+        }
+      }
+
+      if (current.trim()) result.push(current.trim());
+      return result;
+    }
+
+    function refreshChunks() {
+      chunks = splitText(novelText.value);
+      startPart.max = Math.max(chunks.length, 1);
+
+      if (Number(startPart.value) > chunks.length && chunks.length > 0) {
+        startPart.value = chunks.length;
+      }
+
+      if (Number(startPart.value) < 1) {
+        startPart.value = 1;
+      }
+    }
+
+    function saveProgress(index, showMessage) {
+      refreshChunks();
+
+      if (chunks.length === 0) {
+        showStatus("ยังไม่มีข้อความให้อ่าน");
+        return;
+      }
+
+      const safeIndex = Math.min(Math.max(index, 0), chunks.length - 1);
+      localStorage.setItem("novelProgressIndex", safeIndex);
+      localStorage.setItem("novelProgressHash", getTextHash());
+      localStorage.setItem("novelProgressTime", new Date().toLocaleString("th-TH"));
+      updateProgressBox();
+
+      if (showMessage) {
+        showStatus(`บันทึกจุดอ่านต่อแล้ว: ตอนย่อยที่ ${safeIndex + 1}`);
+      }
+    }
+
+    function saveCurrentPosition() {
+      const index = isReading ? chunkIndex : Number(startPart.value) - 1;
+      saveProgress(index, true);
+      autoSaveNovel();
+    }
+
+    function getSavedProgressIndex() {
+      refreshChunks();
+
+      const savedIndex = localStorage.getItem("novelProgressIndex");
+      const savedHash = localStorage.getItem("novelProgressHash");
+      const currentHash = getTextHash();
+
+      if (savedIndex === null || savedHash !== currentHash) {
+        return null;
+      }
+
+      const index = Number(savedIndex);
+
+      if (Number.isNaN(index) || index < 0 || index >= chunks.length) {
+        return null;
+      }
+
+      return index;
+    }
+
+    function updateProgressBox() {
+      refreshChunks();
+
+      const savedIndex = getSavedProgressIndex();
+      const savedTime = localStorage.getItem("novelProgressTime");
+
+      let progressText = "จุดอ่านต่อ: ยังไม่มีข้อมูล";
+
+      if (savedIndex !== null) {
+        progressText = `จุดอ่านต่อ: ตอนย่อยที่ ${savedIndex + 1}/${chunks.length}`;
+        if (savedTime) {
+          progressText += `<br>บันทึกล่าสุด: ${savedTime}`;
+        }
+      }
+
+      progressBox.innerHTML = `${progressText}<br>จำนวนตอนย่อยทั้งหมด: ${chunks.length}`;
+    }
+
+    function readFromBeginning() {
+      startReadingFrom(0);
+    }
+
+    function readFromSelectedPart() {
+      refreshChunks();
+
+      if (chunks.length === 0) {
+        showStatus("ยังไม่มีข้อความให้อ่าน");
+        return;
+      }
+
+      let index = Number(startPart.value) - 1;
+
+      if (Number.isNaN(index)) index = 0;
+      if (index < 0) index = 0;
+      if (index >= chunks.length) index = chunks.length - 1;
+
+      startReadingFrom(index);
+    }
+
+    function continueReading() {
+      const savedIndex = getSavedProgressIndex();
+
+      if (savedIndex === null) {
+        showStatus("ยังไม่มีจุดอ่านต่อ จะเริ่มอ่านตั้งแต่ต้น");
+        startReadingFrom(0);
+        return;
+      }
+
+      startReadingFrom(savedIndex);
+    }
+
+    function startReadingFrom(index) {
+      const text = novelText.value.trim();
+
+      if (!text) {
+        showStatus("ยังไม่มีข้อความให้อ่าน");
+        return;
+      }
+
+      if (!("speechSynthesis" in window)) {
+        showStatus("เบราว์เซอร์นี้ไม่รองรับ TTS");
+        return;
+      }
+
+      stopReading(false);
+      autoSaveNovel();
+      refreshChunks();
+
+      chunkIndex = Math.min(Math.max(index, 0), chunks.length - 1);
+      startPart.value = chunkIndex + 1;
+      isReading = true;
+      saveProgress(chunkIndex, false);
+      speakCurrentChunk();
+    }
+
+    function speakCurrentChunk() {
+      if (!isReading || chunkIndex >= chunks.length) {
+        isReading = false;
+        saveProgress(Math.max(chunks.length - 1, 0), false);
+        showStatus("อ่านจบแล้ว");
+        return;
+      }
+
+      speechSynthesis.cancel();
+
+      const utterance = new SpeechSynthesisUtterance(chunks[chunkIndex]);
+      utterance.lang = "th-TH";
+      utterance.rate = Number(rate.value);
+      utterance.pitch = Number(pitch.value);
+
+      const selectedVoice = voices[voiceSelect.value];
+      if (selectedVoice) {
+        utterance.voice = selectedVoice;
+      }
+
+      utterance.onstart = function () {
+        startPart.value = chunkIndex + 1;
+        saveProgress(chunkIndex, false);
+        showStatus(`กำลังอ่านตอนย่อยที่ ${chunkIndex + 1}/${chunks.length}`);
+      };
+
+      utterance.onend = function () {
+        if (isReading) {
+          chunkIndex++;
+          if (chunkIndex < chunks.length) {
+            saveProgress(chunkIndex, false);
+            speakCurrentChunk();
+          } else {
+            isReading = false;
+            saveProgress(chunks.length - 1, false);
+            showStatus("อ่านจบแล้ว");
+          }
+        }
+      };
+
+      utterance.onerror = function () {
+        showStatus("อ่านไม่ได้ ลองเปลี่ยนเสียงหรือเปิดใน Chrome/Safari");
+      };
+
+      speechSynthesis.speak(utterance);
+    }
+
+    function pauseOrResume() {
+      if (!isReading) {
+        showStatus("ยังไม่ได้เริ่มอ่าน");
+        return;
+      }
+
+      if (speechSynthesis.paused) {
+        speechSynthesis.resume();
+        showStatus("อ่านต่อ");
+      } else {
+        saveProgress(chunkIndex, false);
+        speechSynthesis.pause();
+        showStatus("พักการอ่านแล้ว");
+      }
+    }
+
+    function stopReading(showMessage = true) {
+      if (isReading) {
+        saveProgress(chunkIndex, false);
+      }
+
+      isReading = false;
+      speechSynthesis.cancel();
+
+      if (showMessage) {
+        showStatus("หยุดอ่านแล้ว และจำจุดอ่านต่อไว้แล้ว");
+      }
+    }
+
+    function showStatus(message) {
+      statusText.textContent = message;
+    }
+
+    novelTitle.addEventListener("input", function () {
+      autoSaveNovel();
+    });
+
+    novelText.addEventListener("input", function () {
+      autoSaveNovel();
+      refreshChunks();
+      updateProgressBox();
+    });
+
+    rate.addEventListener("input", function () {
+      rateValue.textContent = Number(rate.value).toFixed(1);
+      localStorage.setItem("novelRate", rate.value);
+    });
+
+    pitch.addEventListener("input", function () {
+      pitchValue.textContent = Number(pitch.value).toFixed(1);
+      localStorage.setItem("novelPitch", pitch.value);
+    });
+
+    voiceSelect.addEventListener("change", function () {
+      localStorage.setItem("novelVoice", voiceSelect.value);
+    });
+
+    startPart.addEventListener("input", function () {
+      refreshChunks();
+    });
+
+    window.addEventListener("beforeunload", function () {
+      if (isReading) {
+        saveProgress(chunkIndex, false);
+      }
+      autoSaveNovel();
+    });
+
+    window.addEventListener("pagehide", function () {
+      if (isReading) {
+        saveProgress(chunkIndex, false);
+      }
+      autoSaveNovel();
+    });
+  </script>
+</body>
+</html>
